@@ -1,8 +1,14 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { api } from '../api/client'
 import { useAppStore } from '../stores'
 import type { Decision } from '../types'
+
+interface AvailableBook {
+  book_id: string
+  book_title: string
+  node_count: number
+}
 
 const store = useAppStore()
 const filter = ref<'all' | 'merge' | 'remove' | 'keep'>('all')
@@ -10,11 +16,69 @@ const exporting = ref<'md' | 'pdf' | null>(null)
 
 const ACTION_ICON = { merge: '⟿', keep: '·', remove: '×' } as const
 
-async function runIntegration() {
-  store.busy = true
-  store.statusText = '跨教材整合中…'
+// 教材选择(整合作用域)
+const availableBooks = ref<AvailableBook[]>([])
+const selectedIds = ref<Set<string>>(new Set())
+const showBookSelector = ref(false)
+
+const allSelected = computed(() =>
+  availableBooks.value.length > 0 && selectedIds.value.size === availableBooks.value.length,
+)
+const selectedCount = computed(() => selectedIds.value.size)
+const selectedNodeCount = computed(() =>
+  availableBooks.value
+    .filter((b) => selectedIds.value.has(b.book_id))
+    .reduce((s, b) => s + b.node_count, 0),
+)
+
+async function loadAvailable() {
   try {
-    await api.post('/integration/run')
+    const { data } = await api.get<{ books: AvailableBook[] }>('/integration/available')
+    availableBooks.value = data.books || []
+    // 默认全选
+    if (selectedIds.value.size === 0) {
+      selectedIds.value = new Set(availableBooks.value.map((b) => b.book_id))
+    }
+  } catch {
+    availableBooks.value = []
+  }
+}
+
+function toggleBook(id: string) {
+  const next = new Set(selectedIds.value)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  selectedIds.value = next
+}
+
+function selectAll() {
+  selectedIds.value = new Set(availableBooks.value.map((b) => b.book_id))
+}
+
+function selectNone() {
+  selectedIds.value = new Set()
+}
+
+function invertSelection() {
+  const cur = selectedIds.value
+  selectedIds.value = new Set(
+    availableBooks.value.filter((b) => !cur.has(b.book_id)).map((b) => b.book_id),
+  )
+}
+
+async function runIntegration() {
+  if (selectedIds.value.size === 0) {
+    alert('请至少选择 1 本教材')
+    return
+  }
+  store.busy = true
+  const n = selectedIds.value.size
+  store.statusText = `整合 ${n} 本教材中…`
+  showBookSelector.value = false
+  try {
+    await api.post('/integration/run', { book_ids: Array.from(selectedIds.value) })
+    // 后端是异步任务,前端轮询直到 status.running = false
+    await waitDone()
     await store.loadDecisions()
     await store.loadGraph('master')
   } finally {
@@ -22,6 +86,26 @@ async function runIntegration() {
     store.statusText = ''
   }
 }
+
+async function waitDone() {
+  // 简单轮询 ≤120s
+  for (let i = 0; i < 120; i++) {
+    try {
+      const { data } = await api.get<{ running: boolean }>('/integration/status')
+      if (!data.running) return
+    } catch {
+      return
+    }
+    await new Promise((r) => setTimeout(r, 1000))
+  }
+}
+
+onMounted(loadAvailable)
+// 教材列表变化时刷新候选(例如新上传/抽取后)
+watch(
+  () => store.textbooks.map((t) => `${t.textbook_id}:${t.status}`).join(','),
+  () => loadAvailable(),
+)
 
 async function downloadExport(kind: 'md' | 'pdf') {
   if (exporting.value) return
@@ -70,9 +154,64 @@ function actionClass(a: string): string {
   <div class="ip fade-in">
     <div class="head">
       <h3>跨教材整合</h3>
-      <button @click="runIntegration" :disabled="store.busy">
-        {{ store.integrationStats ? '重新整合' : '一键整合' }}
-      </button>
+      <div class="head-actions">
+        <button class="secondary scope-btn"
+          :class="{ open: showBookSelector }"
+          @click="showBookSelector = !showBookSelector"
+          :disabled="!availableBooks.length || store.busy">
+          <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor"
+            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="2" y="3" width="12" height="10" rx="1.5" />
+            <path d="M5 6h6M5 9h4" />
+          </svg>
+          {{ selectedCount === availableBooks.length ? '全部教材' : selectedCount === 0 ? '未选教材' : `${selectedCount}/${availableBooks.length} 本` }}
+          <svg class="caret" viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor"
+            stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 5l3 3 3-3" />
+          </svg>
+        </button>
+        <button @click="runIntegration"
+          :disabled="store.busy || selectedCount === 0">
+          {{ store.integrationStats ? '重新整合' : '一键整合' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- 教材选择器(可折叠) -->
+    <div v-if="showBookSelector" class="scope-panel">
+      <div class="scope-head">
+        <span class="scope-title">选择参与整合的教材</span>
+        <span class="scope-stats">
+          已选 <b>{{ selectedCount }}</b> 本 · <b>{{ selectedNodeCount.toLocaleString() }}</b> 节点
+        </span>
+      </div>
+      <div class="scope-quick">
+        <button class="secondary mini" @click="selectAll" :disabled="allSelected">全选</button>
+        <button class="secondary mini" @click="selectNone" :disabled="selectedCount === 0">清空</button>
+        <button class="secondary mini" @click="invertSelection">反选</button>
+      </div>
+      <div class="scope-list">
+        <label
+          v-for="b in availableBooks"
+          :key="b.book_id"
+          class="scope-item"
+          :class="{ selected: selectedIds.has(b.book_id) }"
+        >
+          <input
+            type="checkbox"
+            :checked="selectedIds.has(b.book_id)"
+            @change="toggleBook(b.book_id)"
+          />
+          <span class="scope-name">{{ b.book_title || b.book_id }}</span>
+          <span class="scope-count">{{ b.node_count }} 节点</span>
+        </label>
+        <div v-if="!availableBooks.length" class="scope-empty">
+          暂无可用图谱。请先在左侧"教材管理"中抽取知识点。
+        </div>
+      </div>
+      <div class="scope-hint">
+        留空 = 整合所有教材;选 1 本 = 仅生成单本主图谱(无对齐)
+      </div>
     </div>
 
     <!-- 整合后:展示统计卡 + 导出 -->
@@ -85,7 +224,9 @@ function actionClass(a: string): string {
         </div>
         <div class="hero-label">
           <span class="hero-title">压缩比</span>
-          <span class="hero-sub">7 本教材 · 浓缩为高质量定义集</span>
+          <span class="hero-sub">
+            {{ store.integrationStats.orig_books }} 本教材 · 浓缩为高质量定义集
+          </span>
         </div>
       </div>
 
@@ -160,7 +301,7 @@ function actionClass(a: string): string {
           <path d="M11 11l4 8M21 11l-4 8" />
         </svg>
       </div>
-      <div class="big-empty-title">准备整合 {{ store.textbooks.length || 7 }} 本教材</div>
+      <div class="big-empty-title">准备整合 {{ selectedCount || availableBooks.length || store.textbooks.length }} 本教材</div>
       <div class="big-empty-sub">点击「一键整合」启动跨教材去重与对齐</div>
     </div>
 
@@ -197,8 +338,112 @@ function actionClass(a: string): string {
   height: 100%;
   overflow: hidden;
 }
-.head { display: flex; justify-content: space-between; align-items: center; }
+.head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); }
 h3 { font-size: var(--fs-md); font-weight: 600; color: var(--text); letter-spacing: -0.01em; }
+.head-actions { display: flex; gap: 6px; align-items: center; }
+
+/* —— 教材选择按钮 —— */
+.scope-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 10px;
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+}
+.scope-btn .caret {
+  transition: transform var(--t-fast, 0.12s) ease;
+  margin-left: 2px;
+  color: var(--text-muted);
+}
+.scope-btn.open .caret { transform: rotate(180deg); color: var(--accent); }
+.scope-btn.open {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* —— 教材选择面板 —— */
+.scope-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.scope-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: var(--space-2);
+}
+.scope-title {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.scope-stats {
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+.scope-stats b { color: var(--text); font-weight: 600; }
+.scope-quick { display: flex; gap: 4px; }
+.scope-quick .mini { padding: 3px 9px; font-size: var(--fs-xs); }
+.scope-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 2px 0;
+}
+.scope-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  user-select: none;
+  font-size: var(--fs-sm);
+  transition: background-color var(--t-fast, 0.12s) ease;
+}
+.scope-item:hover { background: var(--surface-hover); }
+.scope-item input[type="checkbox"] {
+  accent-color: var(--accent);
+  cursor: pointer;
+  margin: 0;
+  width: 14px; height: 14px;
+}
+.scope-item.selected { background: var(--accent-soft); }
+.scope-item.selected .scope-name { color: var(--accent); font-weight: 600; }
+.scope-name {
+  flex: 1; min-width: 0;
+  color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.scope-count {
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+.scope-empty {
+  padding: var(--space-3);
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  background: var(--bg-soft);
+  border-radius: var(--r-sm);
+}
+.scope-hint {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  padding-top: 6px;
+  border-top: 1px solid var(--border-subtle);
+  line-height: 1.5;
+}
 
 /* —— 统计卡 —— */
 .stats {
