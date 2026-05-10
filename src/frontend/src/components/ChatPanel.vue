@@ -14,6 +14,15 @@ const EXAMPLES = [
   '炎症反应在《病理学》和《传染病学》里有什么差异?',
 ]
 
+// 时间戳格式化:HH:mm
+function formatTime(ts: number): string {
+  if (!ts) return ''
+  const d = new Date(ts * 1000)
+  const hh = String(d.getHours()).padStart(2, '0')
+  const mm = String(d.getMinutes()).padStart(2, '0')
+  return `${hh}:${mm}`
+}
+
 async function send() {
   const text = message.value.trim()
   if (!text) return
@@ -55,10 +64,10 @@ function clear() {
 </script>
 
 <template>
-  <div class="cp">
+  <div class="cp fade-in">
     <div class="head">
       <h3>对话修正整合</h3>
-      <button class="mini secondary" @click="clear">新会话</button>
+      <button class="mini secondary" @click="clear" :disabled="!store.chatHistory.length">新会话</button>
     </div>
 
     <div class="hint" v-if="!store.chatHistory.length">
@@ -73,7 +82,10 @@ function clear() {
 
     <div ref="scrollEl" class="msgs">
       <div v-for="(m, i) in store.chatHistory" :key="i" :class="['msg', m.role]">
-        <div class="bubble">{{ m.content }}</div>
+        <div class="bubble">
+          <div class="bubble-text">{{ m.content }}</div>
+          <div class="bubble-time" v-if="m.timestamp">{{ formatTime(m.timestamp) }}</div>
+        </div>
       </div>
     </div>
 
@@ -85,7 +97,7 @@ function clear() {
         @keydown.enter.exact.prevent="send"
         @keydown.shift.enter.exact="message += '\n'"
       ></textarea>
-      <button @click="send" :disabled="store.busy || !message.trim()">发送</button>
+      <button class="send-btn" @click="send" :disabled="store.busy || !message.trim()">发送</button>
     </div>
   </div>
 </template>
@@ -159,12 +171,25 @@ h3 { font-size: var(--fs-md); font-weight: 600; color: var(--text); }
 .msg.assistant { justify-content: flex-start; }
 
 .bubble {
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-3) 6px;
   border-radius: var(--r-md);
   max-width: 86%;
   font-size: var(--fs-sm);
-  white-space: pre-wrap;
   line-height: 1.65;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.bubble-text {
+  white-space: pre-wrap;
+}
+.bubble-time {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  align-self: flex-end;
+  letter-spacing: 0.02em;
+  margin-top: 2px;
+  opacity: 0.55;
 }
 /* 用户气泡:浅灰 */
 .msg.user .bubble {
@@ -173,12 +198,15 @@ h3 { font-size: var(--fs-md); font-weight: 600; color: var(--text); }
   border: 1px solid var(--border);
   border-bottom-right-radius: 4px;
 }
+.msg.user .bubble-time { color: var(--text-muted); }
 /* AI 气泡:墨绿底白字,与 RAG 一致 */
 .msg.assistant .bubble {
   background: var(--accent);
   color: var(--text-inverse);
   border-bottom-left-radius: 4px;
+  box-shadow: 0 2px 8px rgba(31, 78, 61, 0.10);
 }
+.msg.assistant .bubble-time { color: rgba(255, 255, 255, 0.7); }
 
 /* —— 输入区 —— */
 .input-area {
@@ -190,4 +218,11 @@ h3 { font-size: var(--fs-md); font-weight: 600; color: var(--text); }
 }
 textarea { flex: 1; resize: none; font-family: inherit; line-height: 1.55; }
 .input-area button { padding: 7px 16px; min-width: 72px; }
+/* 发送按钮 disabled:淡到几乎不见但保留布局,不压扁 */
+.send-btn:disabled {
+  opacity: 0.25;
+  background: var(--accent);
+  color: var(--text-inverse);
+  border-color: var(--accent);
+}
 </style>

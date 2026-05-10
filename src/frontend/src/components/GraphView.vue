@@ -109,21 +109,22 @@ function buildOption() {
   }
 
   if (viewMode.value === 'force') {
+    const hasSearch = !!search.value
     return {
       backgroundColor: 'transparent',
       tooltip: {
         backgroundColor: '#ffffff',
         borderColor: '#e7e5e0',
         borderWidth: 1,
-        padding: [8, 10],
+        padding: [10, 12],
         textStyle: { color: '#2a2a2a', fontSize: 12 },
-        extraCssText: 'box-shadow: 0 4px 12px rgba(0,0,0,0.06); border-radius: 6px; max-width: 320px;',
+        extraCssText: 'box-shadow: 0 6px 16px rgba(0,0,0,0.08); border-radius: 8px; max-width: 340px;',
         formatter: (p: any) =>
           p.dataType === 'node'
-            ? `<div style="font-weight:600;color:#1f4e3d;margin-bottom:4px">${p.data.name}</div>
-               <div style="color:#6b6b6b;font-size:11px;margin-bottom:4px">${p.data.chapter || ''}</div>
-               <div style="color:#2a2a2a;line-height:1.5;white-space:normal">${(p.data.definition || '').slice(0, 120)}${(p.data.definition || '').length > 120 ? '…' : ''}</div>`
-            : `<div style="color:#2a2a2a"><b>${p.data.relation_type}</b>${p.data.description ? '：' + p.data.description : ''}</div>`,
+            ? `<div style="font-weight:600;color:#1f4e3d;margin-bottom:4px;font-size:13px">${p.data.name}</div>
+               <div style="color:#6b6b6b;font-size:11px;margin-bottom:6px;letter-spacing:0.02em">${p.data.chapter || ''}</div>
+               <div style="color:#2a2a2a;line-height:1.6;white-space:normal;font-size:12px">${(p.data.definition || '').slice(0, 140)}${(p.data.definition || '').length > 140 ? '…' : ''}</div>`
+            : `<div style="color:#2a2a2a;font-size:12px"><b>${p.data.relation_type}</b>${p.data.description ? '：' + p.data.description : ''}</div>`,
       },
       legend: [{
         data: bookCategories,
@@ -147,18 +148,34 @@ function buildOption() {
           fontSize: 11,
           fontWeight: 500,
           position: 'right',
-          distance: 4,
+          distance: 5,
         },
         edgeSymbol: ['none', 'arrow'],
-        edgeSymbolSize: [0, 5],
+        edgeSymbolSize: [0, 6],
         force: { repulsion: 260, edgeLength: [60, 130], gravity: 0.08 },
+        // 强化的 emphasis:hover 节点 + 邻居高亮,其它节点降到 0.15;边变粗变深
         emphasis: {
           focus: 'adjacency',
-          label: { fontWeight: 700, color: '#1f4e3d' },
-          itemStyle: { borderColor: '#1f4e3d', borderWidth: 2 },
+          scale: 1.05,
+          label: { fontWeight: 700, color: '#1f4e3d', fontSize: 12 },
+          itemStyle: {
+            borderColor: '#1f4e3d',
+            borderWidth: 2.5,
+            shadowBlur: 12,
+            shadowColor: 'rgba(31, 78, 61, 0.35)',
+          },
+          lineStyle: { width: 2, opacity: 0.85 },
+        },
+        blur: {
+          itemStyle: { opacity: 0.12 },
+          label: { color: '#bbbbbb' },
+          lineStyle: { opacity: 0.05 },
         },
         data: nodes.map((n) => {
           const merged = isMerged(n.source_book)
+          const matched = matchSearch(n)
+          // 搜索命中:加深描边 + 光晕
+          const searchHit = hasSearch && matched
           return {
             id: n.id,
             name: n.name,
@@ -171,11 +188,11 @@ function buildOption() {
             category: bookCategories.indexOf(bookCategoryByNode(n.source_book)),
             itemStyle: {
               color: colorForBook(n.source_book, books),
-              opacity: matchSearch(n) ? 0.95 : 0.18,
-              borderColor: '#ffffff',
-              borderWidth: merged ? 2.5 : 1,
-              // merged 节点不再用阴影/光晕,改为更深的描边
-              shadowBlur: 0,
+              opacity: matched ? 0.95 : 0.16,
+              borderColor: searchHit ? '#1f4e3d' : '#ffffff',
+              borderWidth: searchHit ? 3 : (merged ? 2.5 : 1),
+              shadowBlur: searchHit ? 14 : 0,
+              shadowColor: searchHit ? 'rgba(31, 78, 61, 0.55)' : 'transparent',
             },
             _raw: n,
           }
@@ -188,8 +205,8 @@ function buildOption() {
           lineStyle: {
             color: RELATION_COLOR[e.relation_type] || '#cfcdc7',
             width: 1,
-            opacity: 0.55,
-            curveness: 0.06,
+            opacity: 0.45,
+            curveness: 0.08,
           },
         })),
       }],
@@ -282,9 +299,16 @@ function buildOption() {
     }
 
     const virtualRoot = {
-      name: store.currentGraph?.book_id === 'master' ? '整合知识图谱' : (store.currentGraph?.book_title || '知识体系'),
+      // 虚拟根节点加 ◆ 装饰符,呼应"整合"语义
+      name: store.currentGraph?.book_id === 'master' ? '◆ 整合知识图谱' : (store.currentGraph?.book_title || '知识体系'),
       value: `共 ${roots.length} 个核心知识根 · ${visited.size} 个节点`,
-      itemStyle: { color: '#1f4e3d', borderColor: '#173b2e', borderWidth: 2 },
+      itemStyle: {
+        color: '#1f4e3d',
+        borderColor: '#ffffff',
+        borderWidth: 2,
+        shadowBlur: 8,
+        shadowColor: 'rgba(31, 78, 61, 0.25)',
+      },
       label: { color: '#1f4e3d', fontWeight: 700, fontSize: 13 },
       collapsed: false,
       children: roots,
@@ -296,46 +320,66 @@ function buildOption() {
         backgroundColor: '#ffffff',
         borderColor: '#e7e5e0',
         borderWidth: 1,
-        padding: [8, 10],
+        padding: [10, 12],
         textStyle: { color: '#2a2a2a', fontSize: 12 },
-        extraCssText: 'box-shadow: 0 4px 12px rgba(0,0,0,0.06); border-radius: 6px; max-width: 320px;',
+        extraCssText: 'box-shadow: 0 6px 16px rgba(0,0,0,0.08); border-radius: 8px; max-width: 340px;',
         formatter: (p: any) =>
-          `<div style="font-weight:600;color:#1f4e3d;margin-bottom:4px">${p.data.name}</div>
-           <div style="color:#2a2a2a;line-height:1.5;white-space:normal">${(p.data.value || '').slice(0, 140)}</div>`,
+          `<div style="font-weight:600;color:#1f4e3d;margin-bottom:4px;font-size:13px">${p.data.name}</div>
+           <div style="color:#2a2a2a;line-height:1.6;white-space:normal;font-size:12px">${(p.data.value || '').slice(0, 160)}</div>`,
       },
       series: [{
         type: 'tree',
         data: [virtualRoot],
-        top: '4%', left: '6%', bottom: '4%', right: '14%',
+        // 更舒展的留白:右侧给 leaf label 更多空间
+        top: '6%', left: '8%', bottom: '6%', right: '18%',
         symbol: 'circle',
-        symbolSize: (val: any, p: any) => {
-          // 根节点更大,叶子最小
-          const depth = p?.data?.children?.length ? 0 : 2
-          if (p?.dataIndex === 0) return 14
-          return depth ? 6 : 9
+        symbolSize: (_val: any, p: any) => {
+          // 根 14,二级 10,三级 7,叶 5 —— 形成清晰梯度
+          const depth = (p?.treeAncestors?.length || 1) - 1
+          if (depth === 0) return 14
+          if (depth === 1) return 10
+          if (depth === 2) return 7
+          return 5
         },
         orient: 'LR',
         layout: 'orthogonal',
         edgeShape: 'curve',
         lineStyle: { color: '#d8d5cf', width: 1, curveness: 0.5 },
         label: {
+          // 字号梯度:根 13、二级 12、叶 11 —— 通过 formatter 不灵活,改用 leaves
           color: '#2a2a2a',
-          fontSize: 11,
+          fontSize: 12,
+          fontWeight: 500,
           position: 'left',
           verticalAlign: 'middle',
           align: 'right',
-          distance: 6,
+          distance: 7,
         },
-        leaves: { label: { position: 'right', align: 'left', color: '#6b6b6b' } },
+        leaves: {
+          label: {
+            position: 'right',
+            align: 'left',
+            color: '#6b6b6b',
+            fontSize: 11,
+            fontWeight: 400,
+          }
+        },
         emphasis: {
           focus: 'descendant',
-          itemStyle: { borderColor: '#1f4e3d', borderWidth: 2 },
-          label: { color: '#1f4e3d', fontWeight: 600 },
+          itemStyle: {
+            borderColor: '#1f4e3d',
+            borderWidth: 2,
+            shadowBlur: 6,
+            shadowColor: 'rgba(31, 78, 61, 0.25)',
+          },
+          label: { color: '#1f4e3d', fontWeight: 700 },
+          lineStyle: { color: '#1f4e3d', width: 1.4 },
         },
         expandAndCollapse: true,
         initialTreeDepth: 2,
         roam: true,
         animationDuration: 400,
+        animationEasing: 'cubicOut',
       }],
     } as any
   }
@@ -371,27 +415,63 @@ function buildOption() {
     const k = `${l.source}|${l.target}`
     linkMap[k] = (linkMap[k] || 0) + l.value
   })
+  // 给桑基节点分配三种视觉层级:
+  // 教材(level 0):深墨绿、字大粗;章节(level 1):中等墨绿、字中;知识点(level 2):浅墨绿、字小
+  const bookSet = new Set(sankeyNodes.map((n) => n.source_book))
+  const chapterSet = new Set(sankeyNodes.map((n) => n.chapter))
+  const sankeyNodeData = Array.from(nodeSet).map((n) => {
+    if (bookSet.has(n)) {
+      return {
+        name: n,
+        itemStyle: { color: '#1f4e3d', borderColor: 'transparent' },
+        label: { color: '#1f4e3d', fontSize: 12, fontWeight: 600 },
+      }
+    }
+    if (chapterSet.has(n)) {
+      return {
+        name: n,
+        itemStyle: { color: '#5a8a76', borderColor: 'transparent' },
+        label: { color: '#3d6b58', fontSize: 11, fontWeight: 500 },
+      }
+    }
+    // 叶子(知识点)
+    return {
+      name: n,
+      itemStyle: { color: '#a8c4b6', borderColor: 'transparent' },
+      label: { color: '#6b6b6b', fontSize: 10, fontWeight: 400 },
+    }
+  })
+
   return {
     backgroundColor: 'transparent',
-    color: BOOK_PALETTE,
     tooltip: {
       backgroundColor: '#ffffff',
       borderColor: '#e7e5e0',
       borderWidth: 1,
+      padding: [10, 12],
       textStyle: { color: '#2a2a2a', fontSize: 12 },
-      extraCssText: 'box-shadow: 0 4px 12px rgba(0,0,0,0.06); border-radius: 6px;',
+      extraCssText: 'box-shadow: 0 6px 16px rgba(0,0,0,0.08); border-radius: 8px;',
     },
     series: [{
       type: 'sankey',
-      data: Array.from(nodeSet).map((n) => ({ name: n })),
+      data: sankeyNodeData,
       links: Object.entries(linkMap).map(([k, v]) => {
         const [s, t] = k.split('|')
         return { source: s, target: t, value: v }
       }),
-      label: { color: '#2a2a2a', fontSize: 11 },
       itemStyle: { borderWidth: 0 },
-      lineStyle: { color: 'source', opacity: 0.35, curveness: 0.5 },
-      emphasis: { focus: 'adjacency', lineStyle: { opacity: 0.6 } },
+      // 单色低饱和墨绿,不再用 source 渐变彩色,克制专业
+      lineStyle: { color: '#7da695', opacity: 0.32, curveness: 0.55 },
+      emphasis: {
+        focus: 'adjacency',
+        lineStyle: { opacity: 0.7, color: '#1f4e3d' },
+        itemStyle: { borderColor: '#1f4e3d', borderWidth: 1.5 },
+      },
+      nodeWidth: 14,
+      nodeGap: 10,
+      animationDuration: 500,
+      animationEasing: 'cubicOut',
+      left: '4%', right: '12%', top: '4%', bottom: '4%',
     }],
   } as any
 }
@@ -499,39 +579,68 @@ watch(() => [store.currentGraph, viewMode.value, search.value, showAll.value], r
       </div>
     </div>
 
-    <div v-if="selectedNode" class="detail">
+    <div v-if="selectedNode" class="detail fade-in">
       <div class="detail-head">
-        <h4>{{ selectedNode.name }}</h4>
-        <button class="close-btn" aria-label="关闭" @click="selectedNode = null">×</button>
+        <div class="head-left">
+          <span
+            class="book-dot"
+            :style="{ background: colorForBook(selectedNode.source_book, [...new Set((store.currentGraph?.nodes || []).map(n => isMerged(n.source_book) ? '' : n.source_book).filter(Boolean))]) }"
+            aria-hidden="true"
+          ></span>
+          <h4>{{ selectedNode.name }}</h4>
+        </div>
+        <button class="close-btn" aria-label="关闭" @click="selectedNode = null">
+          <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+            <path d="M3 3l10 10M13 3L3 13" />
+          </svg>
+        </button>
       </div>
-      <div class="row"><span class="k">章节</span><span class="v">{{ selectedNode.chapter }}</span></div>
-      <div class="row"><span class="k">页码</span><span class="v">第 {{ selectedNode.page }} 页</span></div>
-      <div class="row"><span class="k">类别</span><span class="v">{{ selectedNode.category }}</span></div>
-      <div class="row"><span class="k">来源</span><span class="v">{{ selectedNode.source_book }}</span></div>
+
+      <div class="kv-grid">
+        <div class="kv"><span class="k">章节</span><span class="v" :title="selectedNode.chapter">{{ selectedNode.chapter }}</span></div>
+        <div class="kv"><span class="k">页码</span><span class="v">第 {{ selectedNode.page }} 页</span></div>
+        <div class="kv"><span class="k">类别</span><span class="v">{{ selectedNode.category }}</span></div>
+        <div class="kv"><span class="k">来源</span><span class="v" :title="selectedNode.source_book">{{ selectedNode.source_book }}</span></div>
+      </div>
+
       <div class="def">
-        <span class="k def-k">定义</span>
+        <div class="k def-k">定义</div>
         <p class="def-text">{{ selectedNode.definition }}</p>
       </div>
 
       <div v-if="neighbors && (neighbors.out.length || neighbors.inn.length)" class="neighbors">
         <div class="ng-section" v-if="neighbors.out.length">
-          <span class="k">出边 · {{ neighbors.out.length }}</span>
-          <div class="ng-row" v-for="(item, i) in neighbors.out" :key="'o'+i">
+          <div class="ng-title">
+            <span class="ng-arrow ng-out" aria-hidden="true">→</span>
+            出边
+            <span class="ng-count">{{ neighbors.out.length }}</span>
+          </div>
+          <div class="ng-row" v-for="(item, i) in neighbors.out" :key="'o'+i" @click="selectByName(item.node.name)">
             <span class="rel-tag">{{ item.kind }}</span>
-            <a class="ng-name" @click="selectByName(item.node.name)">{{ item.node.name }}</a>
+            <a class="ng-name">{{ item.node.name }}</a>
           </div>
         </div>
         <div class="ng-section" v-if="neighbors.inn.length">
-          <span class="k">入边 · {{ neighbors.inn.length }}</span>
-          <div class="ng-row" v-for="(item, i) in neighbors.inn" :key="'i'+i">
-            <a class="ng-name" @click="selectByName(item.node.name)">{{ item.node.name }}</a>
+          <div class="ng-title">
+            <span class="ng-arrow ng-in" aria-hidden="true">←</span>
+            入边
+            <span class="ng-count">{{ neighbors.inn.length }}</span>
+          </div>
+          <div class="ng-row" v-for="(item, i) in neighbors.inn" :key="'i'+i" @click="selectByName(item.node.name)">
             <span class="rel-tag">{{ item.kind }}</span>
+            <a class="ng-name">{{ item.node.name }}</a>
           </div>
         </div>
       </div>
 
       <div class="actions">
-        <button class="full" @click="askAboutNode">用 RAG 深入了解</button>
+        <button class="full" @click="askAboutNode">
+          <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor"
+            stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="7" cy="7" r="5" /><path d="M11 11l3 3" />
+          </svg>
+          <span>用 RAG 深入了解</span>
+        </button>
       </div>
     </div>
   </div>
@@ -669,45 +778,64 @@ watch(() => [store.currentGraph, viewMode.value, search.value, showAll.value], r
 }
 .ph-hint { color: var(--text-muted); font-size: var(--fs-sm); }
 
-/* —— 节点详情卡(右上浮层) —— */
+/* —— 节点详情卡(右上 sticky panel) —— */
 .detail {
   position: absolute;
   right: var(--space-4);
   top: 60px;
-  width: 300px;
-  max-height: 75%;
+  width: 320px;
+  max-height: calc(100% - 80px);
   overflow-y: auto;
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: var(--r-md);
   padding: var(--space-4);
   font-size: var(--fs-sm);
-  box-shadow: var(--shadow-2);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 .detail-head {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  gap: var(--space-2);
   margin-bottom: var(--space-3);
-  padding-bottom: var(--space-2);
+  padding-bottom: var(--space-3);
   border-bottom: 1px solid var(--border-subtle);
 }
+.head-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  flex: 1;
+}
+.book-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9);
+}
 .detail h4 {
-  font-size: var(--fs-md);
+  font-size: var(--fs-lg);
   font-weight: 600;
   color: var(--text);
   line-height: 1.3;
+  letter-spacing: -0.01em;
+  word-break: break-word;
 }
 .close-btn {
-  width: 24px; height: 24px;
+  width: 24px;
+  height: 24px;
   padding: 0;
-  font-size: 18px;
-  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: transparent;
   color: var(--text-muted);
   border: 1px solid transparent;
   border-radius: var(--r-sm);
-  font-weight: 400;
+  flex-shrink: 0;
 }
 .close-btn:hover {
   background: var(--surface-hover);
@@ -715,61 +843,129 @@ watch(() => [store.currentGraph, viewMode.value, search.value, showAll.value], r
   border-color: var(--border);
 }
 
-.row {
+/* KV 网格:label 11px upper-tracked,value 13px */
+.kv-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-3);
+}
+.kv {
   display: flex;
-  align-items: baseline;
-  margin: 4px 0;
-  font-size: var(--fs-sm);
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 .k {
+  font-size: 10px;
   color: var(--text-muted);
-  width: 56px;
-  flex-shrink: 0;
-  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
-.v { color: var(--text); }
+.v {
+  color: var(--text);
+  font-size: var(--fs-base);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
 
 .def {
-  margin-top: var(--space-3);
+  margin-top: var(--space-2);
   padding-top: var(--space-3);
   border-top: 1px solid var(--border-subtle);
 }
-.def-k { display: block; margin-bottom: 4px; }
-.def-text { color: var(--text); line-height: 1.65; font-size: var(--fs-sm); }
+.def-k { display: block; margin-bottom: 6px; }
+.def-text {
+  color: var(--text);
+  line-height: 1.7;
+  font-size: var(--fs-base);
+  text-indent: 0;
+}
 
 .actions { margin-top: var(--space-4); }
-.actions .full { width: 100%; }
+.actions .full {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
 
+/* —— 邻居:出边/入边分组,标题清晰 —— */
 .neighbors {
   margin-top: var(--space-3);
   padding-top: var(--space-3);
   border-top: 1px solid var(--border-subtle);
 }
-.ng-section { margin-bottom: var(--space-2); }
-.ng-section .k { display: block; margin-bottom: 4px; font-size: var(--fs-xs); width: auto; }
-.ng-row {
+.ng-section { margin-bottom: var(--space-3); }
+.ng-section:last-child { margin-bottom: 0; }
+.ng-title {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 3px 0;
-  font-size: var(--fs-xs);
-}
-.rel-tag {
+  font-size: 10px;
   color: var(--text-muted);
-  flex-shrink: 0;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
+}
+.ng-arrow {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0;
+}
+.ng-count {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--text-muted);
   background: var(--bg-soft);
   padding: 1px 6px;
+  border-radius: var(--r-pill);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+.ng-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 6px;
+  margin: 0 -6px;
+  font-size: var(--fs-xs);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: background-color var(--t-fast) var(--ease-out);
+}
+.ng-row:hover { background: var(--surface-hover); }
+.rel-tag {
+  color: var(--text-dim);
+  flex-shrink: 0;
+  background: var(--bg-soft);
+  padding: 1px 7px;
   border-radius: var(--r-chip);
   font-size: 10px;
+  font-weight: 500;
+  border: 1px solid var(--border-subtle);
 }
 .ng-name {
-  color: var(--accent);
+  color: var(--text);
   cursor: pointer;
   text-decoration: none;
   font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: var(--fs-sm);
+  flex: 1;
+  min-width: 0;
 }
-.ng-name:hover { text-decoration: underline; }
+.ng-row:hover .ng-name { color: var(--accent); }
 </style>

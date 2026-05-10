@@ -1,6 +1,8 @@
 /*
  * 设计 Token —— Linear / Notion / Vercel Dashboard 风
  * 米白底 + 墨绿强调,克制学术
+ *
+ * 第二轮打磨:在保持克制基调的前提下,补全微动效、字体细节、状态层级
  */
 :root {
   /* —— 表面与背景 —— */
@@ -27,6 +29,7 @@
   --accent-soft: #e6efea;       /* 浅墨绿底,用于 tag 背景 */
   --accent-soft-2: #d4e3da;     /* 略深一档,用于 hover */
   --accent-line: #2c5e4a;       /* 描边色 */
+  --accent-glow: rgba(31, 78, 61, 0.18);  /* hover 光晕(克制) */
 
   /* —— 状态色(全部低饱和) —— */
   --ok: #2c5e4a;
@@ -41,12 +44,14 @@
   /* —— 圆角 —— */
   --r-sm: 6px;     /* 按钮 / 输入框 */
   --r-md: 8px;     /* 卡片 */
+  --r-lg: 12px;    /* 大卡片 / 精华 */
   --r-chip: 12px;  /* chip 圆角 */
   --r-pill: 999px; /* 全圆 */
 
-  /* —— 阴影(几乎不用) —— */
+  /* —— 阴影(几乎不用,只在 hover/active 露出) —— */
   --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-2: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-hover: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.03);
 
   /* —— 间距(4 / 8 / 12 / 16 / 24 / 32 节奏) —— */
   --space-1: 4px;
@@ -63,13 +68,20 @@
   --fs-md: 14px;
   --fs-lg: 15px;
   --fs-xl: 17px;
+  --fs-display: 26px;  /* 大数字展示用 */
+
+  /* —— 缓动 —— */
+  --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
+  --t-fast: 0.12s;
+  --t-base: 0.18s;
 
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Inter",
     "Helvetica Neue", "Microsoft YaHei", sans-serif;
   color-scheme: light;
 
-  /* 中文排版微调 */
-  font-feature-settings: "tnum" 1;
+  /* 中文 / 数字混排:tnum 等宽数字,cv11 字体形状变体 */
+  font-feature-settings: "tnum" 1, "ss01" 1;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -99,13 +111,16 @@ button {
   font-family: inherit;
   font-weight: 500;
   line-height: 1.4;
-  transition: background-color 0.15s ease, border-color 0.15s ease,
-    color 0.15s ease, transform 0.1s ease;
+  transition: background-color var(--t-fast) var(--ease-out),
+    border-color var(--t-fast) var(--ease-out),
+    color var(--t-fast) var(--ease-out),
+    box-shadow var(--t-fast) var(--ease-out),
+    transform 0.08s var(--ease-out);
 }
 button:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
 button:active { transform: translateY(0.5px); }
 button:disabled {
-  opacity: 0.45;
+  opacity: 0.4;
   cursor: not-allowed;
   transform: none;
 }
@@ -140,12 +155,17 @@ input, textarea, select {
   font-family: inherit;
   outline: none;
   line-height: 1.5;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color var(--t-fast) var(--ease-out),
+    box-shadow var(--t-fast) var(--ease-out),
+    background-color var(--t-fast) var(--ease-out);
 }
 input::placeholder, textarea::placeholder { color: var(--text-muted); }
 input:focus, textarea:focus, select:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(31, 78, 61, 0.08);
+  background: var(--panel);
+  box-shadow:
+    0 0 0 3px rgba(31, 78, 61, 0.10),
+    inset 0 1px 0 rgba(0, 0, 0, 0.01);
 }
 
 /* —— 卡片 —— */
@@ -175,6 +195,26 @@ input:focus, textarea:focus, select:focus {
 .tag.err  { background: var(--err-soft);  color: var(--err);  border-color: transparent; }
 .tag.run  { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
 
+/* —— 数字徽章(Tab 内嵌计数) —— */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 16px;
+  padding: 0 5px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--bg-soft);
+  border-radius: var(--r-pill);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  margin-left: 6px;
+  letter-spacing: 0;
+}
+.badge.accent { color: var(--accent); background: var(--accent-soft); }
+
 /* —— 滚动条 —— */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -188,6 +228,61 @@ input:focus, textarea:focus, select:focus {
 .text-dim { color: var(--text-dim); }
 .text-muted { color: var(--text-muted); }
 .mono { font-family: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace; }
+.tnum { font-variant-numeric: tabular-nums; }
+.upper-track {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
 
 /* —— 选中文字 —— */
 ::selection { background: var(--accent-soft-2); color: var(--accent); }
+
+/* —— 全局微入场动画(Tab 内容 / 面板切换) —— */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-in { animation: fadeUp 0.18s var(--ease-out); }
+
+/* 系统状态 dot:绿点克制 pulse,用于顶栏 */
+@keyframes statusPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(44, 94, 74, 0.35); }
+  50%      { box-shadow: 0 0 0 4px rgba(44, 94, 74, 0); }
+}
+
+/* 进度色 chip 内的 sweep 动效:极细一束高光从左到右 */
+@keyframes sweep {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(220%); }
+}
+
+/* 骨架屏脉冲(墨绿微脉冲) */
+@keyframes skeletonPulse {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 0.85; }
+}
+.skeleton-line {
+  height: 12px;
+  border-radius: 4px;
+  background: linear-gradient(90deg,
+    var(--bg-soft) 0%,
+    var(--accent-soft) 50%,
+    var(--bg-soft) 100%);
+  background-size: 200% 100%;
+  animation: skeletonPulse 1.4s var(--ease-soft) infinite;
+}
+
+/* hover 微浮(卡片可选用) */
+.lift {
+  transition:
+    transform var(--t-fast) var(--ease-out),
+    box-shadow var(--t-fast) var(--ease-out),
+    border-color var(--t-fast) var(--ease-out);
+}
+.lift:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-hover);
+}
