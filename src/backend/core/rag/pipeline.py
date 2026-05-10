@@ -1,5 +1,6 @@
 """RAG 主流程:索引 + 查询。"""
 from __future__ import annotations
+import time
 from typing import Callable
 from loguru import logger
 
@@ -54,8 +55,17 @@ def build_index(on_progress: Callable[[str], None] | None = None) -> dict:
 
 
 def query(question: str, top_k: int = 5) -> QAResponse:
+    t0 = time.perf_counter()
     hits = retrieve(question, top_k=top_k, hybrid=True)
-    return generate_answer(question, hits)
+    t_retrieve = time.perf_counter()
+    resp = generate_answer(question, hits)
+    t_done = time.perf_counter()
+    resp.latency_ms = {
+        "retrieval": int((t_retrieve - t0) * 1000),
+        "generation": int((t_done - t_retrieve) * 1000),
+        "total": int((t_done - t0) * 1000),
+    }
+    return resp
 
 
 def get_status() -> dict:

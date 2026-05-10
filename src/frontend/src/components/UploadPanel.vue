@@ -113,9 +113,11 @@ function statusLabel(s: string): string {
     />
 
     <div class="actions">
-      <button class="secondary" @click="store.refreshTextbooks()">刷新</button>
-      <button @click="store.loadGraph('master')" :disabled="!store.textbooks.length">
-        查看整合图谱
+      <button class="secondary" @click="store.refreshTextbooks()">🔄 刷新</button>
+      <button @click="store.loadGraph('master')"
+        :class="{ pulse: store.selectedBookId !== 'master' && store.sysStats?.totals.master_nodes }"
+        :disabled="!store.textbooks.length">
+        🌐 整合图谱
       </button>
     </div>
 
@@ -165,6 +167,14 @@ h3 { font-size: 13px; color: var(--text-dim); font-weight: 500; }
 .sub { font-size: 11px; margin-top: 4px; }
 .actions { display: flex; gap: 6px; }
 .actions button { flex: 1; }
+.actions .pulse {
+  animation: pulse 2s ease-in-out infinite;
+  box-shadow: 0 0 0 0 rgba(79,158,255,0.6);
+}
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(79,158,255,0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(79,158,255,0); }
+}
 .list { display: flex; flex-direction: column; gap: 6px; }
 .empty { color: var(--text-dim); font-size: 12px; padding: 10px; text-align: center; }
 .item {

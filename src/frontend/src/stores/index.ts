@@ -7,6 +7,7 @@ import type {
   IntegrationStats,
   RagStatus,
   ChatMessage,
+  SystemStats,
 } from '../types'
 
 export const useAppStore = defineStore('app', {
@@ -21,6 +22,9 @@ export const useAppStore = defineStore('app', {
     chatHistory: [] as ChatMessage[],
     busy: false,
     statusText: '',
+    sysStats: null as SystemStats | null,
+    activeTab: 'integration' as 'integration' | 'rag' | 'chat',
+    pendingRagQuestion: '' as string,
   }),
   actions: {
     async refreshTextbooks() {
@@ -53,6 +57,26 @@ export const useAppStore = defineStore('app', {
       } catch {
         this.ragStatus = null
       }
+    },
+    async loadStats() {
+      try {
+        const { data } = await api.get<SystemStats>('/stats')
+        this.sysStats = data
+      } catch {
+        this.sysStats = null
+      }
+    },
+    async tryLoadMaster() {
+      // 启动时若 master 已生成则自动展示,免空白首屏
+      try {
+        await this.loadGraph('master')
+      } catch {
+        // 没有 master,静默
+      }
+    },
+    askInRag(question: string) {
+      this.pendingRagQuestion = question
+      this.activeTab = 'rag'
     },
   },
 })

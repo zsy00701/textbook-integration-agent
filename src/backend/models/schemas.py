@@ -100,6 +100,7 @@ class QAResponse(BaseModel):
     answer: str
     citations: list[Citation]
     source_chunks: list[str]
+    latency_ms: dict[str, int] = Field(default_factory=dict)  # {retrieval, generation, total}
 
 
 class RagStatus(BaseModel):

@@ -63,6 +63,28 @@ export interface QAResponse {
   answer: string
   citations: Citation[]
   source_chunks: string[]
+  latency_ms?: { retrieval: number; generation: number; total: number }
+}
+
+export interface SystemStats {
+  token_stats: {
+    requests: number
+    prompt_tokens: number
+    completion_tokens: number
+    total_tokens: number
+    avg_latency_s: number
+  }
+  totals: {
+    textbooks_uploaded: number
+    parsed: number
+    graphs: number
+    total_nodes: number
+    master_nodes: number
+    master_edges: number
+    total_chunks: number
+    indexed_books: number
+  }
+  uptime_s: number
 }
 
 export interface RagStatus {

@@ -7,6 +7,8 @@ import type { Decision } from '../types'
 const store = useAppStore()
 const filter = ref<'all' | 'merge' | 'remove' | 'keep'>('all')
 
+const ACTION_ICON = { merge: '🔗', keep: '📍', remove: '🗑' } as const
+
 async function runIntegration() {
   store.busy = true
   store.statusText = '跨教材整合中…'
@@ -36,8 +38,10 @@ function actionClass(a: string): string {
 <template>
   <div class="ip">
     <div class="head">
-      <h3>跨教材整合</h3>
-      <button @click="runIntegration" :disabled="store.busy">▶ 一键整合</button>
+      <h3>🔗 跨教材整合</h3>
+      <button @click="runIntegration" :disabled="store.busy">
+        {{ store.integrationStats ? '▶ 重新整合' : '▶ 一键整合' }}
+      </button>
     </div>
 
     <div v-if="store.integrationStats" class="stats card">
@@ -53,9 +57,12 @@ function actionClass(a: string): string {
       </div>
       <div class="stat-row small">
         <div>节点 {{ store.integrationStats.orig_node_count }} → {{ store.integrationStats.final_node_count }}</div>
-        <div>合并 {{ store.integrationStats.decisions_count.merge || 0 }}</div>
-        <div>保留 {{ store.integrationStats.decisions_count.keep || 0 }}</div>
-        <div>删除 {{ store.integrationStats.decisions_count.remove || 0 }}</div>
+        <div>🔗 {{ store.integrationStats.decisions_count.merge || 0 }}</div>
+        <div>📍 {{ store.integrationStats.decisions_count.keep || 0 }}</div>
+        <div>🗑 {{ store.integrationStats.decisions_count.remove || 0 }}</div>
+      </div>
+      <div class="ratio-note">
+        整合后字数 = 知识点定义合计;原始字数 = 教材正文总字数。压缩 = 把每本几百页教材浓缩为高质量定义集。
       </div>
     </div>
 
@@ -70,7 +77,9 @@ function actionClass(a: string): string {
       <div v-if="!store.decisions.length" class="empty">尚未整合,或无重复知识点</div>
       <div v-for="d in filtered()" :key="d.decision_id" class="d card">
         <div class="d-head">
-          <span :class="actionClass(d.action)">{{ actionLabel(d.action) }}</span>
+          <span :class="actionClass(d.action)">
+            {{ ACTION_ICON[d.action as 'merge'] }} {{ actionLabel(d.action) }}
+          </span>
           <span class="conf">置信 {{ (d.confidence * 100).toFixed(0) }}%</span>
         </div>
         <div class="d-body">{{ d.reason }}</div>
@@ -87,6 +96,7 @@ h3 { font-size: 13px; }
 .stats { padding: 10px; }
 .stat-row { display: flex; justify-content: space-around; gap: 8px; }
 .stat-row.small { color: var(--text-dim); font-size: 11px; margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border); }
+.ratio-note { color: var(--text-dim); font-size: 11px; margin-top: 8px; line-height: 1.55; }
 .k { font-size: 11px; color: var(--text-dim); }
 .v { font-size: 18px; font-weight: 600; margin-top: 2px; }
 .filters { display: flex; gap: 4px; }

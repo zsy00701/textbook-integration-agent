@@ -7,6 +7,13 @@ const store = useAppStore()
 const message = ref('')
 const scrollEl = ref<HTMLDivElement | null>(null)
 
+const EXAMPLES = [
+  '为什么把"炎症"几个版本合并了?详细解释',
+  '请保留所有关于"免疫应答"的节点',
+  '把"抗原"和"免疫原"分开,它们不是同一个概念',
+  '炎症反应在《病理学》和《传染病学》里有什么差异?',
+]
+
 async function send() {
   const text = message.value.trim()
   if (!text) return
@@ -55,10 +62,13 @@ function clear() {
     </div>
 
     <div class="hint" v-if="!store.chatHistory.length">
-      可以这样问:<br />
-      · 为什么把《生理学》的"炎症"和《病理学》的"炎症反应"合并了?<br />
-      · 我觉得"免疫应答"不应该被删除,请保留<br />
-      · 把"抗原"和"免疫原"分开,它们不是同一个概念
+      <div class="hint-title">💡 可以这样反馈(点击直接填入):</div>
+      <button
+        v-for="ex in EXAMPLES"
+        :key="ex"
+        class="ex-chip"
+        @click="message = ex"
+      >{{ ex }}</button>
     </div>
 
     <div ref="scrollEl" class="msgs">
@@ -86,6 +96,16 @@ function clear() {
 h3 { font-size: 13px; }
 .mini { font-size: 11px; padding: 3px 8px; }
 .hint { color: var(--text-dim); font-size: 12px; padding: 10px; background: var(--panel); border-radius: 4px; line-height: 1.7; }
+.hint-title { margin-bottom: 6px; }
+.ex-chip {
+  display: block; width: 100%; text-align: left;
+  background: var(--panel-2); color: var(--text-dim);
+  border: 1px solid var(--border);
+  font-size: 12px; padding: 5px 9px; margin-bottom: 4px;
+  border-radius: 4px;
+  white-space: normal;
+}
+.ex-chip:hover { border-color: var(--accent); color: var(--text); }
 .msgs { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 4px; }
 .msg { display: flex; }
 .msg.user { justify-content: flex-end; }

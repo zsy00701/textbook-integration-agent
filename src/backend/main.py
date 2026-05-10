@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 from loguru import logger
 
 from .config import settings, FRONTEND_DIST
-from .api import health, upload, graph, integration, rag, chat
+from .api import health, upload, graph, integration, rag, chat, stats
 
 
 @asynccontextmanager
@@ -52,6 +52,7 @@ app.include_router(graph.router, prefix="/api", tags=["graph"])
 app.include_router(integration.router, prefix="/api", tags=["integration"])
 app.include_router(rag.router, prefix="/api", tags=["rag"])
 app.include_router(chat.router, prefix="/api", tags=["chat"])
+app.include_router(stats.router, prefix="/api", tags=["stats"])
 
 # 前端静态托管(只在构建产物存在时挂载)
 if FRONTEND_DIST.exists() and (FRONTEND_DIST / "index.html").exists():
