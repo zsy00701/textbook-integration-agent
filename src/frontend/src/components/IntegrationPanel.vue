@@ -6,6 +6,7 @@ import type { Decision } from '../types'
 
 const store = useAppStore()
 const filter = ref<'all' | 'merge' | 'remove' | 'keep'>('all')
+const exporting = ref<'md' | 'pdf' | null>(null)
 
 const ACTION_ICON = { merge: '⟿', keep: '·', remove: '×' } as const
 
@@ -19,6 +20,36 @@ async function runIntegration() {
   } finally {
     store.busy = false
     store.statusText = ''
+  }
+}
+
+async function downloadExport(kind: 'md' | 'pdf') {
+  if (exporting.value) return
+  exporting.value = kind
+  try {
+    const url = `/api/export/${kind === 'md' ? 'markdown' : 'pdf'}`
+    const resp = await fetch(url)
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+    const blob = await resp.blob()
+    // 从 Content-Disposition 提取文件名(优先 filename*=UTF-8'')
+    const cd = resp.headers.get('Content-Disposition') || ''
+    let filename = `知识整合精华.${kind === 'md' ? 'md' : 'pdf'}`
+    const m = cd.match(/filename\*=UTF-8''([^;\n]+)/i)
+    if (m) {
+      try { filename = decodeURIComponent(m[1]) } catch {}
+    }
+    const a = document.createElement('a')
+    const objUrl = URL.createObjectURL(blob)
+    a.href = objUrl
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    setTimeout(() => URL.revokeObjectURL(objUrl), 0)
+  } catch (e: any) {
+    alert(`导出失败:${e?.message || e}`)
+  } finally {
+    exporting.value = null
   }
 }
 
@@ -72,6 +103,37 @@ function actionClass(a: string): string {
       </div>
       <div class="ratio-note">
         整合后字数 = 知识点定义合计;原始字数 = 教材正文总字数。压缩 = 把每本几百页教材浓缩为高质量定义集。
+      </div>
+
+      <div class="export-row">
+        <div class="export-label">导出精华版</div>
+        <div class="export-btns">
+          <button
+            class="secondary mini"
+            :disabled="exporting !== null"
+            @click="downloadExport('md')"
+          >
+            <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor"
+              stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 2h7l3 3v9a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z" />
+              <path d="M10 2v3h3" />
+            </svg>
+            {{ exporting === 'md' ? '生成中…' : 'Markdown' }}
+          </button>
+          <button
+            class="secondary mini"
+            :disabled="exporting !== null"
+            @click="downloadExport('pdf')"
+          >
+            <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor"
+              stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 2h7l3 3v9a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z" />
+              <path d="M10 2v3h3" />
+              <path d="M5 9h6M5 12h4" />
+            </svg>
+            {{ exporting === 'pdf' ? '生成中…' : 'PDF' }}
+          </button>
+        </div>
       </div>
     </div>
 
@@ -168,6 +230,32 @@ h3 { font-size: var(--fs-md); font-weight: 600; color: var(--text); }
   line-height: 1.6;
   padding-top: var(--space-2);
   border-top: 1px solid var(--border-subtle);
+}
+
+/* —— 导出按钮区 —— */
+.export-row {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.export-label {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.export-btns { display: flex; gap: 6px; }
+.export-btns button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  font-size: var(--fs-xs);
 }
 
 /* —— 过滤分段控件 —— */
