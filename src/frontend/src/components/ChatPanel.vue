@@ -62,7 +62,7 @@ function clear() {
     </div>
 
     <div class="hint" v-if="!store.chatHistory.length">
-      <div class="hint-title">💡 可以这样反馈(点击直接填入):</div>
+      <div class="hint-title">可以这样反馈,点击填入</div>
       <button
         v-for="ex in EXAMPLES"
         :key="ex"
@@ -81,7 +81,7 @@ function clear() {
       <textarea
         v-model="message"
         rows="2"
-        placeholder="输入反馈…"
+        placeholder="输入反馈,Enter 发送 / Shift+Enter 换行"
         @keydown.enter.exact.prevent="send"
         @keydown.shift.enter.exact="message += '\n'"
       ></textarea>
@@ -91,28 +91,103 @@ function clear() {
 </template>
 
 <style scoped>
-.cp { padding: 12px; display: flex; flex-direction: column; gap: 10px; height: 100%; overflow: hidden; }
-.head { display: flex; justify-content: space-between; align-items: center; }
-h3 { font-size: 13px; }
-.mini { font-size: 11px; padding: 3px 8px; }
-.hint { color: var(--text-dim); font-size: 12px; padding: 10px; background: var(--panel); border-radius: 4px; line-height: 1.7; }
-.hint-title { margin-bottom: 6px; }
-.ex-chip {
-  display: block; width: 100%; text-align: left;
-  background: var(--panel-2); color: var(--text-dim);
-  border: 1px solid var(--border);
-  font-size: 12px; padding: 5px 9px; margin-bottom: 4px;
-  border-radius: 4px;
-  white-space: normal;
+.cp {
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  height: 100%;
+  overflow: hidden;
 }
-.ex-chip:hover { border-color: var(--accent); color: var(--text); }
-.msgs { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 4px; }
+.head { display: flex; justify-content: space-between; align-items: center; }
+h3 { font-size: var(--fs-md); font-weight: 600; color: var(--text); }
+.mini { font-size: var(--fs-xs); padding: 4px 10px; }
+
+/* —— 提示区(空对话时) —— */
+.hint {
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+  padding: var(--space-3);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  line-height: 1.6;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.hint-title {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 2px;
+}
+.ex-chip {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: var(--bg-soft);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  font-size: var(--fs-sm);
+  padding: 7px 10px;
+  border-radius: var(--r-sm);
+  white-space: normal;
+  font-weight: 400;
+  line-height: 1.5;
+  transition: all 0.15s ease;
+}
+.ex-chip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* —— 消息列表 —— */
+.msgs {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: 0 var(--space-1);
+}
 .msg { display: flex; }
 .msg.user { justify-content: flex-end; }
 .msg.assistant { justify-content: flex-start; }
-.bubble { padding: 8px 12px; border-radius: 8px; max-width: 80%; font-size: 13px; white-space: pre-wrap; line-height: 1.55; }
-.msg.user .bubble { background: var(--accent); color: white; }
-.msg.assistant .bubble { background: var(--panel); border: 1px solid var(--border); }
-.input-area { display: flex; gap: 6px; align-items: flex-end; }
-textarea { flex: 1; resize: none; font-family: inherit; }
+
+.bubble {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--r-md);
+  max-width: 86%;
+  font-size: var(--fs-sm);
+  white-space: pre-wrap;
+  line-height: 1.65;
+}
+/* 用户气泡:浅灰 */
+.msg.user .bubble {
+  background: var(--bg-soft);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-bottom-right-radius: 4px;
+}
+/* AI 气泡:墨绿底白字,与 RAG 一致 */
+.msg.assistant .bubble {
+  background: var(--accent);
+  color: var(--text-inverse);
+  border-bottom-left-radius: 4px;
+}
+
+/* —— 输入区 —— */
+.input-area {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-end;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border);
+}
+textarea { flex: 1; resize: none; font-family: inherit; line-height: 1.55; }
+.input-area button { padding: 7px 16px; min-width: 72px; }
 </style>

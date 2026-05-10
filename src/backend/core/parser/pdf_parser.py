@@ -65,8 +65,14 @@ def _clean_page_text(blocks: list, page_height: float) -> str:
 
 
 def _detect_chapter_in_page(blocks: list, page_height: float) -> tuple[str | None, float | None]:
-    """从 page blocks 中找最可能的章节标题及其 y 坐标。"""
-    candidates = []
+    """从 page blocks 中找最可能的章节标题及其 y 坐标。
+
+    策略:
+    1. 真章节标题在医学教材中通常 fs ≥ 19,且短(<30 字)
+    2. "第 X 章" 经常拆成两行渲染:["第二章", "细胞的基本功能"],需要拼接
+    3. 排除孤立大字号数字(页码/装饰)、英文译名、纯标点
+    """
+    big_lines: list[tuple[float, float, str]] = []  # (font_size, y, text)
     for blk in blocks:
         if blk.get("type") != 0:
             continue
@@ -81,19 +87,52 @@ def _detect_chapter_in_page(blocks: list, page_height: float) -> tuple[str | Non
             if y < 45 or y > page_height - 45:
                 continue
             font_size = max((s.get("size", 0) for s in spans), default=0)
-            is_bold = any("Bold" in s.get("font", "") or s.get("flags", 0) & 16 for s in spans)
-            if _is_chapter_title(text):
-                candidates.append((text, y, font_size, is_bold, 100))  # 强匹配高分
-            elif font_size > 14 and is_bold and len(text) < 35:
-                # 字号大 + 加粗 + 短行 = 可能的章节(弱匹配)
-                candidates.append((text, y, font_size, is_bold, font_size))
+            if font_size >= 18 and len(text) < 30:
+                big_lines.append((font_size, y, text))
 
-    if not candidates:
-        return None, None
-    # 按分数取最高,平分时按字号
-    candidates.sort(key=lambda c: (-c[4], -c[2]))
-    title, y, *_ = candidates[0]
-    return title.strip(), y
+    big_lines.sort(key=lambda x: x[1])  # 按 y 排序
+
+    # 1) 强匹配:大字号 + "第X章/篇" 命中
+    for i, (fs, y, t) in enumerate(big_lines):
+        # 排除纯数字/纯英文/单字
+        if PURE_NUM_RE.match(t) or _is_western_only(t) or len(t) <= 1:
+            continue
+        if "第" in t and any(k in t for k in ("章", "篇", "部分")):
+            # 拼接同字号紧邻短行(章名)
+            head = t.strip()
+            pattern_only = re.match(r"^第\s*[一二三四五六七八九十百千〇零0-9]+\s*[章篇]\s*$", head)
+            if pattern_only:
+                # 向后找紧邻的同字号(±1)实词
+                for j in range(i + 1, min(i + 3, len(big_lines))):
+                    fs2, y2, t2 = big_lines[j]
+                    if y2 - y > 80:  # 距离太远不算
+                        break
+                    if PURE_NUM_RE.match(t2) or _is_western_only(t2):
+                        continue
+                    if fs2 < fs - 2 or fs2 > fs + 2:
+                        continue
+                    if not (0 < len(t2) < 25):
+                        continue
+                    head = head + " " + t2.strip()
+                    break
+            return head, y
+
+    # 2) 弱匹配:正则识别(原有逻辑)
+    for fs, y, t in big_lines:
+        if PURE_NUM_RE.match(t) or _is_western_only(t):
+            continue
+        if _is_chapter_title(t):
+            return t.strip(), y
+
+    return None, None
+
+
+PURE_NUM_RE = re.compile(r"^[\d\s]+$")
+WESTERN_RE = re.compile(r"^[A-Za-z\s,.\-\d]+$")
+
+
+def _is_western_only(s: str) -> bool:
+    return bool(WESTERN_RE.match(s))
 
 
 def parse_pdf(file_path: Path, textbook_id: str) -> TextbookDoc:

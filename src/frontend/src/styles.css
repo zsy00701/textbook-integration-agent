@@ -1,17 +1,78 @@
+/*
+ * 设计 Token —— Linear / Notion / Vercel Dashboard 风
+ * 米白底 + 墨绿强调,克制学术
+ */
 :root {
-  --bg: #0f1419;
-  --panel: #1a2030;
-  --panel-2: #232a3d;
-  --border: #2d3548;
-  --text: #e3e8f0;
-  --text-dim: #8a93a6;
-  --accent: #4f9eff;
-  --accent-2: #6dd6c1;
-  --warn: #f5a623;
-  --err: #ef5350;
-  --ok: #4caf50;
-  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
-  color-scheme: dark;
+  /* —— 表面与背景 —— */
+  --bg: #faf8f5;            /* 整体米白底 */
+  --bg-soft: #f4f1ec;       /* 左侧导航 / 次级面板 */
+  --panel: #ffffff;         /* 卡片 / 工作区 */
+  --panel-2: #f6f4ef;       /* 嵌套块,如展开后的 chunk */
+  --surface-hover: #f1eee8; /* hover 态 */
+
+  /* —— 边框 —— */
+  --border: #e7e5e0;
+  --border-strong: #d8d5cf;
+  --border-subtle: #efece6;
+
+  /* —— 文字 —— */
+  --text: #2a2a2a;
+  --text-dim: #6b6b6b;
+  --text-muted: #9b9b9b;
+  --text-inverse: #ffffff;
+
+  /* —— 主色:墨绿 —— */
+  --accent: #1f4e3d;
+  --accent-hover: #173b2e;
+  --accent-soft: #e6efea;       /* 浅墨绿底,用于 tag 背景 */
+  --accent-soft-2: #d4e3da;     /* 略深一档,用于 hover */
+  --accent-line: #2c5e4a;       /* 描边色 */
+
+  /* —— 状态色(全部低饱和) —— */
+  --ok: #2c5e4a;
+  --ok-soft: #e6efea;
+  --warn: #b88a2c;
+  --warn-soft: #f5edd9;
+  --err: #b94545;
+  --err-soft: #f5e3e3;
+  --info: #4f6b8a;
+  --info-soft: #e6ebf1;
+
+  /* —— 圆角 —— */
+  --r-sm: 6px;     /* 按钮 / 输入框 */
+  --r-md: 8px;     /* 卡片 */
+  --r-chip: 12px;  /* chip 圆角 */
+  --r-pill: 999px; /* 全圆 */
+
+  /* —— 阴影(几乎不用) —— */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-2: 0 4px 12px rgba(0, 0, 0, 0.06);
+
+  /* —— 间距(4 / 8 / 12 / 16 / 24 / 32 节奏) —— */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  /* —— 字号 —— */
+  --fs-xs: 11px;
+  --fs-sm: 12px;
+  --fs-base: 13px;
+  --fs-md: 14px;
+  --fs-lg: 15px;
+  --fs-xl: 17px;
+
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Inter",
+    "Helvetica Neue", "Microsoft YaHei", sans-serif;
+  color-scheme: light;
+
+  /* 中文排版微调 */
+  font-feature-settings: "tnum" 1;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -21,58 +82,112 @@ html, body, #app { height: 100%; }
 body {
   background: var(--bg);
   color: var(--text);
-  font-size: 14px;
-  line-height: 1.55;
+  font-size: var(--fs-base);
+  line-height: 1.6;
   overflow: hidden;
 }
 
+/* —— 按钮基础(主按钮:墨绿底白字) —— */
 button {
   background: var(--accent);
-  color: white;
-  border: none;
+  color: var(--text-inverse);
+  border: 1px solid var(--accent);
   padding: 6px 14px;
-  border-radius: 4px;
+  border-radius: var(--r-sm);
   cursor: pointer;
-  font-size: 13px;
-  transition: opacity 0.15s;
+  font-size: var(--fs-base);
+  font-family: inherit;
+  font-weight: 500;
+  line-height: 1.4;
+  transition: background-color 0.15s ease, border-color 0.15s ease,
+    color 0.15s ease, transform 0.1s ease;
 }
-button:hover { opacity: 0.85; }
-button:disabled { opacity: 0.4; cursor: not-allowed; }
-button.secondary { background: var(--panel-2); color: var(--text); }
-button.danger { background: var(--err); }
+button:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+button:active { transform: translateY(0.5px); }
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
 
-input, textarea, select {
-  background: var(--panel-2);
+/* 次按钮:白底+灰边+深灰字 */
+button.secondary {
+  background: var(--panel);
   color: var(--text);
   border: 1px solid var(--border);
-  padding: 6px 10px;
-  border-radius: 4px;
-  font-size: 13px;
+}
+button.secondary:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+
+/* 危险按钮:深灰底,极少出现 */
+button.danger {
+  background: var(--panel);
+  color: var(--err);
+  border: 1px solid var(--border);
+}
+button.danger:hover { background: var(--err-soft); border-color: var(--err); }
+
+/* —— 表单元素 —— */
+input, textarea, select {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 7px 10px;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-base);
   font-family: inherit;
   outline: none;
+  line-height: 1.5;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
-input:focus, textarea:focus { border-color: var(--accent); }
+input::placeholder, textarea::placeholder { color: var(--text-muted); }
+input:focus, textarea:focus, select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(31, 78, 61, 0.08);
+}
 
+/* —— 卡片 —— */
 .card {
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 12px;
+  border-radius: var(--r-md);
+  padding: var(--space-3);
 }
 
+/* —— Tag / Chip —— */
 .tag {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 11px;
-  background: var(--panel-2);
+  border-radius: var(--r-chip);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  background: var(--bg-soft);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  white-space: nowrap;
 }
-.tag.ok { background: rgba(76,175,80,0.2); color: var(--ok); }
-.tag.warn { background: rgba(245,166,35,0.2); color: var(--warn); }
-.tag.err { background: rgba(239,83,80,0.2); color: var(--err); }
-.tag.run { background: rgba(79,158,255,0.2); color: var(--accent); }
+.tag.ok   { background: var(--ok-soft);   color: var(--ok);   border-color: transparent; }
+.tag.warn { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
+.tag.err  { background: var(--err-soft);  color: var(--err);  border-color: transparent; }
+.tag.run  { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
 
+/* —— 滚动条 —— */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* —— 文本工具类 —— */
+.text-dim { color: var(--text-dim); }
+.text-muted { color: var(--text-muted); }
+.mono { font-family: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace; }
+
+/* —— 选中文字 —— */
+::selection { background: var(--accent-soft-2); color: var(--accent); }

@@ -44,11 +44,16 @@ export const useAppStore = defineStore('app', {
       }
     },
     async loadDecisions() {
-      const { data } = await api.get<{ decisions: Decision[]; stats: IntegrationStats }>(
-        '/integration/decisions'
-      )
-      this.decisions = data.decisions
-      this.integrationStats = data.stats
+      try {
+        const { data } = await api.get<{ decisions: Decision[]; stats: IntegrationStats }>(
+          '/integration/decisions'
+        )
+        this.decisions = data.decisions || []
+        this.integrationStats = data.stats?.orig_books ? data.stats : null
+      } catch {
+        this.decisions = []
+        this.integrationStats = null
+      }
     },
     async loadRagStatus() {
       try {
