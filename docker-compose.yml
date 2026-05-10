@@ -1,0 +1,12 @@
+services:
+  app:
+    build: .
+    image: ai-textbook-integration:latest
+    container_name: textbook-integration
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped

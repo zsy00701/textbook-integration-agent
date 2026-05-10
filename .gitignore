@@ -1,0 +1,51 @@
+# 教材数据(单文件 100MB+,GitHub 推送会失败;评审用赛方教材)
+data/textbooks/*.pdf
+data/textbooks/*.docx
+data/textbooks/*.md
+data/textbooks/*.txt
+data/textbooks/*.xlsx
+*.pdf
+!docs/**/*.pdf
+!report/**/*.pdf
+
+# 运行时产物
+data/parsed/
+data/graphs/
+data/integrated/
+data/chroma/
+data/sessions/
+*.zip
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node / Vite
+node_modules/
+src/frontend/dist/
+src/frontend/.vite/
+*.log
+
+# 环境与密钥
+.env
+.env.local
+.env.*.local
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+第一届AI全栈黑客松赛题(1).pdf
+textbooks.zip
+.claude/
+.venv/

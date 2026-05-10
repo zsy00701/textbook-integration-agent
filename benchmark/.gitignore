@@ -1,0 +1,4 @@
+results/
+.judge_cache/
+__pycache__/
+*.pyc
